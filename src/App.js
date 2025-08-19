@@ -10,10 +10,10 @@ function App() {
     'SN-005'
   ], []);
 
-  const [serialNumberOptions, setSerialNumberOptions] = useState(defaultSerialNumberOptions);
+  const [serialNumberOptions, setSerialNumberOptions] = useState([]);
   const [isLoadingSerials, setIsLoadingSerials] = useState(false);
   const [serialsError, setSerialsError] = useState('');
-  const [selectedSerialNumber, setSelectedSerialNumber] = useState(defaultSerialNumberOptions[0]);
+  const [selectedSerialNumber, setSelectedSerialNumber] = useState();
   const [selectedModel, setSelectedModel] = useState('0');
   const [selectedTimeMinutes, setSelectedTimeMinutes] = useState(1);
   const [selectedSoundLevel, setSelectedSoundLevel] = useState(0);
@@ -31,50 +31,54 @@ function App() {
   }, []);
   // Background-only; no UI state needed
   const wsRef = useRef(null);
-  const reconnectTimerRef = useRef(null);
-  const reconnectAttemptsRef = useRef(0);
-  const shouldReconnectRef = useRef(false);
-
-  const connectWebSocket = (url) => {
-    if (!url) return;
-    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
-      try { wsRef.current.close(); } catch (_) {}
-    }
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
-    try {
-      const socket = new WebSocket(url);
-      wsRef.current = socket;
-      socket.onopen = () => {
-        reconnectAttemptsRef.current = 0;
-      };
-      socket.onmessage = (event) => {
-        try {
-          // App currently does not display messages; log for debugging
-          // Remove or replace with app-specific side effects as needed
-          // eslint-disable-next-line no-console
-          console.log('[WS message]', event.data);
-        } catch (_) {}
-      };
-      socket.onerror = () => {
-        // eslint-disable-next-line no-console
-        console.warn('[WS error]');
-      };
-      socket.onclose = () => {
-        if (shouldReconnectRef.current) {
-          const attempt = Math.min(reconnectAttemptsRef.current + 1, 6);
-          reconnectAttemptsRef.current = attempt;
-          const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 15000);
-          reconnectTimerRef.current = setTimeout(() => connectWebSocket(url), delayMs);
+  
+  useEffect(() => {
+    wsRef.current = new WebSocket(`${process.env.REACT_APP_WS_URL}`);
+    const ws = wsRef.current;
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log(data);
+      console.log(data.topic);
+      if (data.topic === `GVC/KP/ALL`) {
+        const cleanedValue = data.value.replace(/[*#]/g, '');
+        const parts = cleanedValue.split(',');
+        console.log(parts);
+        console.log(selectedSerialNumber);
+        if(parts[0]==selectedSerialNumber)
+        {
+          console.log("Matched");
+          if(parts[1].includes('GMode'))
+          {
+            setQueryOutput(`GMode? -> ${parts[2]}`);
+          }
+          else if(parts[1].includes('SMode'))
+          {
+            setQueryOutput(`SMode? -> ${parts[2]}`);
+          }
+           else if(parts[1].includes('PTime'))
+          {
+            setQueryOutput(`PTime? -> ${parts[2]}`);
+          }
         }
-      };
-    } catch (_) {
-      // eslint-disable-next-line no-console
-      console.warn('[WS exception]');
-    }
-  };
+        
+        
+      }
+    };
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+ 
 
   const sendWsCommand = (value) => {
     try {
@@ -92,20 +96,7 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    // Auto-connect on mount
-    shouldReconnectRef.current = true;
-    reconnectAttemptsRef.current = 0;
-    connectWebSocket(defaultWsUrl);
-    return () => {
-      // cleanup on unmount
-      shouldReconnectRef.current = false;
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      if (wsRef.current) {
-        try { wsRef.current.close(); } catch (_) {}
-      }
-    };
-  }, [defaultWsUrl]);
+ 
 
   const extractSerialsFromApiResponse = (data) => {
     if (!data) return [];
@@ -187,7 +178,8 @@ function App() {
       const serials = extractSerialsFromApiResponse(data);
       if (serials.length > 0) {
         setSerialNumberOptions(serials);
-        setSelectedSerialNumber((prev) => serials.includes(prev) ? prev : serials[0]);
+        console.log(serials);
+        setSelectedSerialNumber(serials[0]);
       } else {
         setSerialNumberOptions(defaultSerialNumberOptions);
         setSelectedSerialNumber(defaultSerialNumberOptions[0]);
@@ -285,17 +277,17 @@ function App() {
   };
 
   const handleQueryGMode = () => {
-    setQueryOutput(`GMode? -> ${selectedModel}`);
+    // setQueryOutput(`GMode? -> ${selectedModel}`);
     sendWsCommand('*GMode?#');
   };
 
   const handleQuerySMode = () => {
-    setQueryOutput(`SMode? -> ${selectedSoundLevel}`);
+    // setQueryOutput(`SMode? -> ${selectedSoundLevel}`);
     sendWsCommand('*SMode?#');
   };
 
   const handleQueryPTime = () => {
-    setQueryOutput(`PTime? -> ${selectedTimeMinutes}`);
+    // setQueryOutput(`PTime? -> ${selectedTimeMinutes}`);
     sendWsCommand('*PTime?#');
   };
 
