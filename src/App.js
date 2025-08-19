@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 
 function App() {
@@ -18,6 +18,94 @@ function App() {
   const [selectedTimeMinutes, setSelectedTimeMinutes] = useState(1);
   const [selectedSoundLevel, setSelectedSoundLevel] = useState(0);
   const [queryOutput, setQueryOutput] = useState('');
+
+  // WebSocket state
+  const defaultWsUrl = useMemo(() => (
+    (typeof process !== 'undefined' && process.env && process.env.REACT_APP_WS_URL) || 'ws://localhost:6060'
+  ), []);
+  // Max heartbeat age for filtering (minutes); default to 3
+  const maxHeartbeatMinutes = useMemo(() => {
+    const raw = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_MAX_HEARTBEAT_MINUTES) || '';
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
+  }, []);
+  // Background-only; no UI state needed
+  const wsRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
+  const shouldReconnectRef = useRef(false);
+
+  const connectWebSocket = (url) => {
+    if (!url) return;
+    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+      try { wsRef.current.close(); } catch (_) {}
+    }
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    try {
+      const socket = new WebSocket(url);
+      wsRef.current = socket;
+      socket.onopen = () => {
+        reconnectAttemptsRef.current = 0;
+      };
+      socket.onmessage = (event) => {
+        try {
+          // App currently does not display messages; log for debugging
+          // Remove or replace with app-specific side effects as needed
+          // eslint-disable-next-line no-console
+          console.log('[WS message]', event.data);
+        } catch (_) {}
+      };
+      socket.onerror = () => {
+        // eslint-disable-next-line no-console
+        console.warn('[WS error]');
+      };
+      socket.onclose = () => {
+        if (shouldReconnectRef.current) {
+          const attempt = Math.min(reconnectAttemptsRef.current + 1, 6);
+          reconnectAttemptsRef.current = attempt;
+          const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 15000);
+          reconnectTimerRef.current = setTimeout(() => connectWebSocket(url), delayMs);
+        }
+      };
+    } catch (_) {
+      // eslint-disable-next-line no-console
+      console.warn('[WS exception]');
+    }
+  };
+
+  const sendWsCommand = (value) => {
+    try {
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const payload = {
+          topic: `GVC/KP/${selectedSerialNumber}`,
+          value
+        };
+        socket.send(JSON.stringify(payload));
+      }
+    } catch (_) {
+      // eslint-disable-next-line no-console
+      console.warn('[WS send] failed for command', value);
+    }
+  };
+
+  useEffect(() => {
+    // Auto-connect on mount
+    shouldReconnectRef.current = true;
+    reconnectAttemptsRef.current = 0;
+    connectWebSocket(defaultWsUrl);
+    return () => {
+      // cleanup on unmount
+      shouldReconnectRef.current = false;
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (wsRef.current) {
+        try { wsRef.current.close(); } catch (_) {}
+      }
+    };
+  }, [defaultWsUrl]);
 
   const extractSerialsFromApiResponse = (data) => {
     if (!data) return [];
@@ -41,8 +129,40 @@ function App() {
     if (typeof asArray[0] === 'object') {
       const first = asArray[0] || {};
       const foundKey = tryKeys.find((k) => Object.prototype.hasOwnProperty.call(first, k)) || '';
+      // Extract and filter by last heartbeat time
+      const nowMs = Date.now();
+      const maxAgeMs = maxHeartbeatMinutes * 60 * 1000;
+      const heartbeatKeys = [
+        'lastHeartBeatTime',
+        'LastHeartBeatTime',
+        'lastHeartbeatTime',
+        'lastHeartbeat',
+        'last_seen',
+        'lastSeen'
+      ];
+      const getHeartbeatMs = (obj) => {
+        for (const key of heartbeatKeys) {
+          const value = obj?.[key];
+          if (value == null) continue;
+          if (typeof value === 'number') return value;
+          if (typeof value === 'string') {
+            const asNumber = Number(value);
+            if (Number.isFinite(asNumber)) return asNumber;
+            const parsed = Date.parse(value);
+            if (Number.isFinite(parsed)) return parsed;
+          }
+        }
+        return undefined;
+      };
+      const withHeartbeat = asArray.filter((obj) => typeof obj === 'object' && obj);
+      const recent = withHeartbeat
+        .map((obj) => ({ obj, hb: getHeartbeatMs(obj) }))
+        .filter(({ hb }) => typeof hb === 'number' && nowMs - hb <= maxAgeMs)
+        .sort((a, b) => (b.hb || 0) - (a.hb || 0))
+        .map(({ obj }) => obj);
+      const baseArray = recent.length > 0 ? recent : withHeartbeat;
       if (foundKey) {
-        return asArray.map((item) => String(item[foundKey])).filter(Boolean);
+        return baseArray.map((item) => String(item[foundKey])).filter(Boolean);
       }
       return asArray.map((item, idx) => String(item?.serial || item?.serialNumber || item?.id || `SN-${idx + 1}`)).filter(Boolean);
     }
@@ -50,10 +170,11 @@ function App() {
   };
 
   const loadSerialNumbers = async () => {
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:9000/game/active';
     setIsLoadingSerials(true);
     setSerialsError('');
     try {
-      const response = await fetch('http://snackboss-iot.in:9000/game/active', {
+      const response = await fetch(apiUrl, {
         method: 'GET',
     
         
@@ -70,7 +191,7 @@ function App() {
       } else {
         setSerialNumberOptions(defaultSerialNumberOptions);
         setSelectedSerialNumber(defaultSerialNumberOptions[0]);
-        setSerialsError('No serials found in API response. Using defaults.');
+        setSerialsError('No active devices by lastHeartBeatTime filter. Using defaults.');
       }
     } catch (error) {
       setSerialNumberOptions(defaultSerialNumberOptions);
@@ -86,6 +207,73 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Send message to WebSocket when model changes (skip initial render)
+  const didSendInitialModelRef = useRef(false);
+  useEffect(() => {
+    if (!didSendInitialModelRef.current) {
+      didSendInitialModelRef.current = true;
+      return;
+    }
+    try {
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const payload = {
+          topic: `GVC/KP/${selectedSerialNumber}`,
+          value: `*GMode:${selectedModel}#`
+        };
+        console.log(payload);
+        socket.send(JSON.stringify(payload));
+      }
+    } catch (_) {
+      // eslint-disable-next-line no-console
+      console.warn('[WS send] failed for model change');
+    }
+  }, [selectedModel, selectedSerialNumber]);
+
+  // Send message to WebSocket when time changes (skip initial render)
+  const didSendInitialTimeRef = useRef(false);
+  useEffect(() => {
+    if (!didSendInitialTimeRef.current) {
+      didSendInitialTimeRef.current = true;
+      return;
+    }
+    try {
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const payload = {
+          topic: `GVC/KP/${selectedSerialNumber}`,
+          value: `*PTime:${selectedTimeMinutes}#`
+        };
+        socket.send(JSON.stringify(payload));
+      }
+    } catch (_) {
+      // eslint-disable-next-line no-console
+      console.warn('[WS send] failed for time change');
+    }
+  }, [selectedTimeMinutes, selectedSerialNumber]);
+
+  // Send message to WebSocket when sound changes (skip initial render)
+  const didSendInitialSoundRef = useRef(false);
+  useEffect(() => {
+    if (!didSendInitialSoundRef.current) {
+      didSendInitialSoundRef.current = true;
+      return;
+    }
+    try {
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const payload = {
+          topic: `GVC/KP/${selectedSerialNumber}`,
+          value: `*SMode:${selectedSoundLevel}#`
+        };
+        socket.send(JSON.stringify(payload));
+      }
+    } catch (_) {
+      // eslint-disable-next-line no-console
+      console.warn('[WS send] failed for sound change');
+    }
+  }, [selectedSoundLevel, selectedSerialNumber]);
+
   const handleSubmit = (event) => {
     event.preventDefault();
   };
@@ -98,14 +286,17 @@ function App() {
 
   const handleQueryGMode = () => {
     setQueryOutput(`GMode? -> ${selectedModel}`);
+    sendWsCommand('*GMode?#');
   };
 
   const handleQuerySMode = () => {
     setQueryOutput(`SMode? -> ${selectedSoundLevel}`);
+    sendWsCommand('*SMode?#');
   };
 
   const handleQueryPTime = () => {
     setQueryOutput(`PTime? -> ${selectedTimeMinutes}`);
+    sendWsCommand('*PTime?#');
   };
 
   return (
@@ -189,7 +380,7 @@ function App() {
           <section className="section section--queries">
             <div className="label">Queries</div>
             <div className="actions">
-              <button type="button" className="btn" onClick={handleQueryAll}>Query</button>
+              {/* <button type="button" className="btn" onClick={handleQueryAll}>Query</button> */}
               <button type="button" className="btn" onClick={handleQueryGMode}>GMode?</button>
               <button type="button" className="btn" onClick={handleQuerySMode}>SMode?</button>
               <button type="button" className="btn" onClick={handleQueryPTime}>PTime?</button>
