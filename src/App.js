@@ -76,7 +76,7 @@ function App() {
     return () => {
       ws.close();
     };
-  }, []);
+  }, [selectedSerialNumber]);
 
  
 
