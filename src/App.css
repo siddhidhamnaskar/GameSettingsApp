@@ -1,38 +1,139 @@
 .App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
   min-height: 100vh;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.App-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.settings-container {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+}
+
+.title {
+  margin: 0 0 16px 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.section {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.label {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.select {
+  background: #0b1220;
+  color: #e2e8f0;
+  border: 1px solid #22314e;
+  border-radius: 8px;
+  height: 40px;
+  padding: 0 12px;
+}
+
+.radio-group {
   display: flex;
-  flex-direction: column;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.radio-option {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #22314e;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
 }
 
-.App-link {
-  color: #61dafb;
+.radio-option.selected {
+  border-color: #60a5fa;
+  background: rgba(96,165,250,0.15);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.radio-option input {
+  accent-color: #60a5fa;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  background: #1f2937;
+  color: #e2e8f0;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 8px 12px;
+  height: 38px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #2b3648;
+}
+
+.output {
+  background: #0b1220;
+  border: 1px solid #22314e;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 10px;
+  min-height: 48px;
+  white-space: pre-wrap;
+}
+
+/* Responsive layout */
+@media (min-width: 640px) {
+  .settings-container {
+    padding: 28px;
   }
-  to {
-    transform: rotate(360deg);
+
+  .section {
+    grid-template-columns: 220px 1fr;
+    align-items: center;
+  }
+
+  .section .label {
+    margin: 0;
+  }
+
+  .section .select,
+  .section .radio-group,
+  .section .actions,
+  .section .output {
+    justify-self: start;
+  }
+
+  .section--queries {
+    grid-template-columns: 220px 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .App-main {
+    max-width: 860px;
+  }
+
+  .btn {
+    padding: 10px 14px;
   }
 }
