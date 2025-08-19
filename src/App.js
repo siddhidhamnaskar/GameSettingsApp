@@ -101,6 +101,7 @@ function App() {
   const extractSerialsFromApiResponse = (data) => {
     if (!data) return [];
     const tryKeys = [
+      'SNoutput',
       'DeviceNumber',
       'deviceNumber',
       'serial',
@@ -308,6 +309,7 @@ function App() {
               value={selectedSerialNumber}
               onChange={(e) => setSelectedSerialNumber(e.target.value)}
               disabled={isLoadingSerials}
+              search
             >
               {serialNumberOptions.map((sn) => (
                 <option key={sn} value={sn}>{sn}</option>
