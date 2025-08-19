@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 
 function App() {
-  const serialNumberOptions = useMemo(() => [
+  const defaultSerialNumberOptions = useMemo(() => [
     'SN-001',
     'SN-002',
     'SN-003',
@@ -10,11 +10,81 @@ function App() {
     'SN-005'
   ], []);
 
-  const [selectedSerialNumber, setSelectedSerialNumber] = useState(serialNumberOptions[0]);
+  const [serialNumberOptions, setSerialNumberOptions] = useState(defaultSerialNumberOptions);
+  const [isLoadingSerials, setIsLoadingSerials] = useState(false);
+  const [serialsError, setSerialsError] = useState('');
+  const [selectedSerialNumber, setSelectedSerialNumber] = useState(defaultSerialNumberOptions[0]);
   const [selectedModel, setSelectedModel] = useState('0');
   const [selectedTimeMinutes, setSelectedTimeMinutes] = useState(1);
   const [selectedSoundLevel, setSelectedSoundLevel] = useState(0);
   const [queryOutput, setQueryOutput] = useState('');
+
+  const extractSerialsFromApiResponse = (data) => {
+    if (!data) return [];
+    const tryKeys = [
+      'DeviceNumber',
+      'deviceNumber',
+      'serial',
+      'serialNumber',
+      'serial_no',
+      'serialNo',
+      'deviceSerial',
+      'device_serial',
+      'imei',
+      'id',
+      'name'
+    ];
+    const asArray = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : Array.isArray(data?.items) ? data.items : [];
+    if (!Array.isArray(asArray)) return [];
+    if (asArray.length === 0) return [];
+    if (typeof asArray[0] === 'string') return asArray.filter(Boolean);
+    if (typeof asArray[0] === 'object') {
+      const first = asArray[0] || {};
+      const foundKey = tryKeys.find((k) => Object.prototype.hasOwnProperty.call(first, k)) || '';
+      if (foundKey) {
+        return asArray.map((item) => String(item[foundKey])).filter(Boolean);
+      }
+      return asArray.map((item, idx) => String(item?.serial || item?.serialNumber || item?.id || `SN-${idx + 1}`)).filter(Boolean);
+    }
+    return [];
+  };
+
+  const loadSerialNumbers = async () => {
+    setIsLoadingSerials(true);
+    setSerialsError('');
+    try {
+      const response = await fetch('http://snackboss-iot.in:9000/game/active', {
+        method: 'GET',
+    
+        
+      });
+      console.log(response);
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const data = await response.json();
+      const serials = extractSerialsFromApiResponse(data);
+      if (serials.length > 0) {
+        setSerialNumberOptions(serials);
+        setSelectedSerialNumber((prev) => serials.includes(prev) ? prev : serials[0]);
+      } else {
+        setSerialNumberOptions(defaultSerialNumberOptions);
+        setSelectedSerialNumber(defaultSerialNumberOptions[0]);
+        setSerialsError('No serials found in API response. Using defaults.');
+      }
+    } catch (error) {
+      setSerialNumberOptions(defaultSerialNumberOptions);
+      setSelectedSerialNumber(defaultSerialNumberOptions[0]);
+      setSerialsError(`Failed to load serials. Using defaults. ${error?.message || ''}`.trim());
+    } finally {
+      setIsLoadingSerials(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSerialNumbers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -46,16 +116,25 @@ function App() {
 
           <section className="section">
             <label htmlFor="serial-select" className="label">Choose Serial Number</label>
+            {serialsError ? (
+              <div className="error" role="alert" style={{ color: '#ff8080', marginBottom: 8 }}>{serialsError}</div>
+            ) : null}
             <select
               id="serial-select"
               className="select"
               value={selectedSerialNumber}
               onChange={(e) => setSelectedSerialNumber(e.target.value)}
+              disabled={isLoadingSerials}
             >
               {serialNumberOptions.map((sn) => (
                 <option key={sn} value={sn}>{sn}</option>
               ))}
             </select>
+            <div style={{ marginTop: 8 }}>
+              <button type="button" className="btn" onClick={loadSerialNumbers} disabled={isLoadingSerials}>
+                {isLoadingSerials ? 'Loading…' : 'Refresh'}
+              </button>
+            </div>
           </section>
 
           <section className="section">
