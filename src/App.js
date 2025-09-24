@@ -13,11 +13,12 @@ function App() {
   const [serialNumberOptions, setSerialNumberOptions] = useState([]);
   const [isLoadingSerials, setIsLoadingSerials] = useState(false);
   const [serialsError, setSerialsError] = useState('');
-  const [selectedSerialNumber, setSelectedSerialNumber] = useState();
-  const [selectedModel, setSelectedModel] = useState('0');
-  const [selectedTimeMinutes, setSelectedTimeMinutes] = useState(1);
-  const [selectedSoundLevel, setSelectedSoundLevel] = useState(0);
+  const [selectedSerialNumber, setSelectedSerialNumber] = useState('');
+  const [selectedModel, setSelectedModel] = useState('');
+  const [selectedTimeMinutes, setSelectedTimeMinutes] = useState('');
+  const [selectedSoundLevel, setSelectedSoundLevel] = useState('');
   const [queryOutput, setQueryOutput] = useState('');
+  const [selectedLightTime,setSelectedLightTime]=useState('');
 
   // WebSocket state
   const defaultWsUrl = useMemo(() => (
@@ -243,7 +244,7 @@ function App() {
       // eslint-disable-next-line no-console
       console.warn('[WS send] failed for time change');
     }
-  }, [selectedTimeMinutes, selectedSerialNumber]);
+  }, [selectedTimeMinutes]);
 
   // Send message to WebSocket when sound changes (skip initial render)
   const didSendInitialSoundRef = useRef(false);
@@ -265,7 +266,38 @@ function App() {
       // eslint-disable-next-line no-console
       console.warn('[WS send] failed for sound change');
     }
-  }, [selectedSoundLevel, selectedSerialNumber]);
+  }, [selectedSoundLevel]);
+
+
+  // Send message to WebSocket when LightTime changes (skip initial render)
+  const didSendInitialLightTimeRef = useRef(false);
+  useEffect(() => {
+    if (!didSendInitialLightTimeRef.current) {
+      didSendInitialLightTimeRef.current = true;
+      return;
+    }
+    try {
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const payload = {
+          topic: `GVC/KP/${selectedSerialNumber}`,
+          value: `*Mod2LT:${selectedLightTime}#`
+        };
+        socket.send(JSON.stringify(payload));
+      }
+    } catch (_) {
+      // eslint-disable-next-line no-console
+      console.warn('[WS send] failed for sound change');
+    }
+  },[selectedLightTime]);
+
+
+  useEffect(()=>{
+     setSelectedLightTime('');
+     setSelectedModel('');
+     setSelectedSoundLevel('');
+     setSelectedTimeMinutes('');
+  },[selectedSerialNumber])
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -290,6 +322,11 @@ function App() {
   const handleQueryPTime = () => {
     // setQueryOutput(`PTime? -> ${selectedTimeMinutes}`);
     sendWsCommand('*PTime?#');
+  };
+
+   const handleQueryLightTime = () => {
+    // setQueryOutput(`PTime? -> ${selectedTimeMinutes}`);
+    sendWsCommand('*Mode2LT?#');
   };
 
   return (
@@ -330,6 +367,7 @@ function App() {
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
             >
+              <option value="">Select GameMode</option>
               <option value="0">Model 0 - All buttons OKAY</option>
               <option value="1">Model 1 - Press Light Button</option>
             </select>
@@ -368,8 +406,25 @@ function App() {
                   {level}
                 </label>
               ))}
-            </div>
+            </div>  
           </section>
+           <section className="section">
+            <div className="label">Set Mode2 Light Time</div>
+            <div className="radio-group" role="radiogroup" aria-label="Set Sound">
+              {[ 1, 2, 3, 4 ,5].map((level) => (
+                <label key={level} className={`radio-option ${selectedLightTime === level ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="lightTime"
+                    value={level}
+                    checked={selectedLightTime === level}
+                    onChange={() => setSelectedLightTime(level)}
+                  />
+                  {level}
+                </label>
+              ))}
+            </div>
+          </section> 
 
           <section className="section section--queries">
             <div className="label">Queries</div>
@@ -378,6 +433,8 @@ function App() {
               <button type="button" className="btn" onClick={handleQueryGMode}>GMode?</button>
               <button type="button" className="btn" onClick={handleQuerySMode}>SMode?</button>
               <button type="button" className="btn" onClick={handleQueryPTime}>PTime?</button>
+              <button type="button" className="btn" onClick={handleQueryLightTime}>Mode2LightTime?</button>
+              
             </div>
             <pre className="output" aria-live="polite">{queryOutput}</pre>
           </section>
