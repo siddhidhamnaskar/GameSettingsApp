@@ -101,6 +101,13 @@
   white-space: pre-wrap;
 }
 
+.description {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 6px;   /* 👈 keeps it below the setting nicely */
+}
+
+
 /* Responsive layout */
 @media (min-width: 640px) {
   .settings-container {

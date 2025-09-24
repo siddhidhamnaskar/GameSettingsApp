@@ -329,119 +329,137 @@ function App() {
     sendWsCommand('*Mode2LT?#');
   };
 
-  return (
-    <div className="App">
-      <main className="App-main">
-        <form className="settings-container" onSubmit={handleSubmit}>
-          <h1 className="title">Device Settings</h1>
+return (
+  <div className="App">
+    <main className="App-main">
+      <form className="settings-container" onSubmit={handleSubmit}>
+        <h1 className="title">Device Settings</h1>
 
-          <section className="section">
-            <label htmlFor="serial-select" className="label">Choose Serial Number</label>
-            {serialsError ? (
-              <div className="error" role="alert" style={{ color: '#ff8080', marginBottom: 8 }}>{serialsError}</div>
-            ) : null}
-            <select
-              id="serial-select"
-              className="select"
-              value={selectedSerialNumber}
-              onChange={(e) => setSelectedSerialNumber(e.target.value)}
-              disabled={isLoadingSerials}
-              search
-            >
-              {serialNumberOptions.map((sn) => (
-                <option key={sn} value={sn}>{sn}</option>
-              ))}
-            </select>
-            <div style={{ marginTop: 8 }}>
-              <button type="button" className="btn" onClick={loadSerialNumbers} disabled={isLoadingSerials}>
-                {isLoadingSerials ? 'Loading…' : 'Refresh'}
-              </button>
-            </div>
-          </section>
+        {/* Serial Number */}
+        <section className="section">
+          <label htmlFor="serial-select" className="label">Choose Serial Number</label>
+          {serialsError ? (
+            <div className="error" role="alert" style={{ color: '#ff8080', marginBottom: 8 }}>{serialsError}</div>
+          ) : null}
+          <select
+            id="serial-select"
+            className="select"
+            value={selectedSerialNumber}
+            onChange={(e) => setSelectedSerialNumber(e.target.value)}
+            disabled={isLoadingSerials}
+          >
+            {serialNumberOptions.map((sn) => (
+              <option key={sn} value={sn}>{sn}</option>
+            ))}
+          </select>
+          <div style={{ marginTop: 8 }}>
+            <button type="button" className="btn" onClick={loadSerialNumbers} disabled={isLoadingSerials}>
+              {isLoadingSerials ? 'Loading…' : 'Refresh'}
+            </button>
+          </div>
+        
+        </section>
+          {/* 👉 description BELOW */}
+          <p className="description">Select the device’s serial number to configure.</p>
 
-          <section className="section">
-            <label htmlFor="model-select" className="label">Choose Model</label>
-            <select
-              id="model-select"
-              className="select"
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-            >
-              <option value="">Select GameMode</option>
-              <option value="0">Model 0 - All buttons OKAY</option>
-              <option value="1">Model 1 - Press Light Button</option>
-            </select>
-          </section>
+        {/* Model */}
+        <section className="section">
+          <label htmlFor="model-select" className="label">Choose Model</label>
+          <select
+            id="model-select"
+            className="select"
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+          >
+            <option value="">Select GameMode</option>
+            <option value="0">Model 0 - All buttons OKAY</option>
+            <option value="1">Model 1 - Press Light Button</option>
+          </select>
+         
+        </section>
+         <p className="description">Select the game mode or model type for this device.</p>
 
-          <section className="section">
-            <div className="label">Set Time (minutes)</div>
-            <div className="radio-group" role="radiogroup" aria-label="Set Time">
-              {[1, 2, 5, 10].map((minutes) => (
-                <label key={minutes} className={`radio-option ${selectedTimeMinutes === minutes ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="time"
-                    value={minutes}
-                    checked={selectedTimeMinutes === minutes}
-                    onChange={() => setSelectedTimeMinutes(minutes)}
-                  />
-                  {minutes}
-                </label>
-              ))}
-            </div>
-          </section>
+        {/* Time */}
+        <section className="section">
+          <div className="label">Set Time (minutes)</div>
+          <div className="radio-group" role="radiogroup" aria-label="Set Time">
+            {[1, 2, 5, 10].map((minutes) => (
+              <label key={minutes} className={`radio-option ${selectedTimeMinutes === minutes ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="time"
+                  value={minutes}
+                  checked={selectedTimeMinutes === minutes}
+                  onChange={() => setSelectedTimeMinutes(minutes)}
+                />
+                {minutes}
+              </label>
+            ))}
+          </div>
+          
+        </section>
+        <p className="description">Set how long the game session will last.</p>
 
-          <section className="section">
-            <div className="label">Set Sound</div>
-            <div className="radio-group" role="radiogroup" aria-label="Set Sound">
-              {[0, 1, 2, 3, 4].map((level) => (
-                <label key={level} className={`radio-option ${selectedSoundLevel === level ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="sound"
-                    value={level}
-                    checked={selectedSoundLevel === level}
-                    onChange={() => setSelectedSoundLevel(level)}
-                  />
-                  {level}
-                </label>
-              ))}
-            </div>  
-          </section>
-           <section className="section">
-            <div className="label">Set Mode2 Light Time</div>
-            <div className="radio-group" role="radiogroup" aria-label="Set Sound">
-              {[ 1, 2, 3, 4 ,5].map((level) => (
-                <label key={level} className={`radio-option ${selectedLightTime === level ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="lightTime"
-                    value={level}
-                    checked={selectedLightTime === level}
-                    onChange={() => setSelectedLightTime(level)}
-                  />
-                  {level}
-                </label>
-              ))}
-            </div>
-          </section> 
+        {/* Sound */}
+        <section className="section">
+          <div className="label">Set Sound</div>
+          <div className="radio-group" role="radiogroup" aria-label="Set Sound">
+            {[0, 1, 2, 3, 4].map((level) => (
+              <label key={level} className={`radio-option ${selectedSoundLevel === level ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="sound"
+                  value={level}
+                  checked={selectedSoundLevel === level}
+                  onChange={() => setSelectedSoundLevel(level)}
+                />
+                {level}
+              </label>
+            ))}
+          </div>
+         
+        </section>
+         <p className="description">Adjust the sound type of the device.</p>
 
-          <section className="section section--queries">
-            <div className="label">Queries</div>
-            <div className="actions">
-              {/* <button type="button" className="btn" onClick={handleQueryAll}>Query</button> */}
-              <button type="button" className="btn" onClick={handleQueryGMode}>GMode?</button>
-              <button type="button" className="btn" onClick={handleQuerySMode}>SMode?</button>
-              <button type="button" className="btn" onClick={handleQueryPTime}>PTime?</button>
-              <button type="button" className="btn" onClick={handleQueryLightTime}>Mode2LightTime?</button>
-              
-            </div>
-            <pre className="output" aria-live="polite">{queryOutput}</pre>
-          </section>
-        </form>
-      </main>
-    </div>
-  );
+        {/* Mode2 Light Time */}
+        <section className="section">
+          <div className="label">Set Mode2 Light Time</div>
+          <div className="radio-group" role="radiogroup" aria-label="Set Light Time">
+            {[1, 2, 3, 4, 5].map((level) => (
+              <label key={level} className={`radio-option ${selectedLightTime === level ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="lightTime"
+                  value={level}
+                  checked={selectedLightTime === level}
+                  onChange={() => setSelectedLightTime(level)}
+                />
+                {level}
+              </label>
+            ))}
+          </div>
+         
+        </section>
+         <p className="description">Time each light stays ON in Mode 2 (seconds).</p>
+
+        {/* Queries */}
+        <section className="section section--queries">
+          <div className="label">Queries</div>
+          <div className="actions">
+            <button type="button" className="btn" onClick={handleQueryGMode}>GMode?</button>
+            <button type="button" className="btn" onClick={handleQuerySMode}>SMode?</button>
+            <button type="button" className="btn" onClick={handleQueryPTime}>PTime?</button>
+            <button type="button" className="btn" onClick={handleQueryLightTime}>Mode2LightTime?</button>
+          </div>
+          <p className="description">Send commands to check current settings on the device.</p>
+          <pre className="output" aria-live="polite">{queryOutput}</pre>
+        </section>
+      </form>
+    </main>
+  </div>
+);
+
+
 }
 
 export default App;
