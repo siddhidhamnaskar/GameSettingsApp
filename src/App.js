@@ -352,6 +352,7 @@ return (
               <option key={sn} value={sn}>{sn}</option>
             ))}
           </select>
+            <p className="description">Select the device’s serial number to configure.</p>
           <div style={{ marginTop: 8 }}>
             <button type="button" className="btn" onClick={loadSerialNumbers} disabled={isLoadingSerials}>
               {isLoadingSerials ? 'Loading…' : 'Refresh'}
@@ -360,7 +361,7 @@ return (
         
         </section>
           {/* 👉 description BELOW */}
-          <p className="description">Select the device’s serial number to configure.</p>
+        
 
         {/* Model */}
         <section className="section">

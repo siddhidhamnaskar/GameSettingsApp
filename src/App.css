@@ -104,7 +104,8 @@
 .description {
   font-size: 0.9rem;
   color: #666;
-  margin-top: 6px;   /* 👈 keeps it below the setting nicely */
+  margin-top: -10px;   /* 👈 keeps it below the setting nicely */
+  margin-bottom: 20px;
 }
 
 
