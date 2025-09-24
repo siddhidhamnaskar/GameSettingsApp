@@ -374,6 +374,7 @@ return (
             <option value="">Select GameMode</option>
             <option value="0">Model 0 - All buttons OKAY</option>
             <option value="1">Model 1 - Press Light Button</option>
+            <option value="2">Model 2 - Play In Sequence</option>
           </select>
          
         </section>
